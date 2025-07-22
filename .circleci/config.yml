@@ -16,23 +16,26 @@ jobs:
       - checkout
 
       - run:
-          name: Authenticate to Google Cloud
+          name: Authenticate to Google Cloud via WIF
           command: |
-            gcloud auth login --brief || true
-            gcloud auth list
-
             gcloud iam workload-identity-pools create-cred-config \
               "${WORKLOAD_IDENTITY_PROVIDER}" \
               --service-account="${SERVICE_ACCOUNT_EMAIL}" \
-              --output-file=creds.json \
-              --credential-source-file="${HOME}/.config/gcloud/legacy_credentials/$(gcloud config get-value account)/adc.json"
+              --output-file=creds.json
 
             gcloud auth login --cred-file=creds.json
             gcloud auth activate-service-account --key-file=creds.json
             gcloud config set project $GOOGLE_CLOUD_PROJECT
 
       - run:
-          name: Deploy / Your Custom Command
+          name: Run gcloud command
           command: |
-            echo "Authenticated! Running gcloud command..."
+            echo "Authenticated! Listing compute instances..."
             gcloud compute instances list
+
+# ✅ ADD THIS WORKFLOW BLOCK
+workflows:
+  version: 2
+  deploy_on_main:
+    jobs:
+      - deploy
