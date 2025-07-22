@@ -31,7 +31,7 @@ jobs:
               },
               "service_account_impersonation_url": "${GCP_IMPERSONATION_URL}"
             }
-EOF
+            EOF
 
             gcloud auth application-default print-access-token
             gcloud projects describe "${GCP_PROJECT_ID}"
