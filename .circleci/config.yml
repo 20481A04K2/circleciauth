@@ -1,116 +1,42 @@
 version: 2.1
 
-executors:
-  python-linter:
-    docker:
-      - image: circleci/python:3.9
-
-  gcloud-machine:
-    machine:
-      image: ubuntu-2204:2023.10.1
-
-environment_defaults: &gcp_env
-  GCP_PROJECT_ID: sylvan-hydra-464904-d9
-  GCP_REGION: asia-east1
-  MIG_NAME: prod-mig
-  TEMPLATE_PREFIX: prod-template
-  HEALTH_CHECK_NAME: vamsi-health-check
-  FIREWALL_RULE_NAME: allow-8080
-  ZIP_URL: https://github.com/20481A04K2/circlecimig/archive/refs/heads/main.zip
-
 jobs:
-  test:
-    executor: python-linter
-    steps:
-      - checkout
-      - run:
-          name: 🔍 Lint Python Code
-          command: |
-            pip install pylint
-            pylint app.py --disable=import-error || true
+  deploy-to-gcp:
+    docker:
+      - image: google/cloud-sdk:latest
 
-  deploy-to-mig:
-    executor: gcloud-machine
-    environment: *gcp_env
     steps:
       - checkout
 
       - run:
-          name: 🔐 Install gcloud SDK & Authenticate
+          name: Authenticate to Google Cloud with Workload Identity Federation
           command: |
-            sudo apt-get update && sudo apt-get install -y curl gnupg unzip
-            curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg | gpg --dearmor | sudo tee /usr/share/keyrings/cloud.google.gpg > /dev/null
-            echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | sudo tee /etc/apt/sources.list.d/google-cloud-sdk.list
-            sudo apt-get update && sudo apt-get install -y google-cloud-sdk
-            echo "$GCP_SA_KEY_B64" | base64 -d > gcloud-key.json
-            gcloud auth activate-service-account --key-file=gcloud-key.json
-            gcloud config set project "$GCP_PROJECT_ID"
+            gcloud auth login --brief
+            gcloud auth print-identity-token
 
       - run:
-          name: 🔖 Generate Version Tag
+          name: Set up Workload Identity Federation credentials
           command: |
-            echo "export VERSION_TAG=$(date +%Y%m%d%H%M%S)" >> $BASH_ENV
+            gcloud iam workload-identity-pools create-cred-config \
+              projects/57920515119/locations/global/workloadIdentityPools/circleci-identity-pool/providers/github \
+              --service-account=circleci-deploy-sa@sylvan-hydra-464904-d9.iam.gserviceaccount.com \
+              --output-file=creds.json
 
       - run:
-          name: 🛠️ Create Instance Template from GitHub ZIP
+          name: Authenticate with GCP using WIF
           command: |
-            source $BASH_ENV
-            gcloud compute instance-templates create ${TEMPLATE_PREFIX}-${VERSION_TAG} \
-              --machine-type=e2-medium \
-              --region=$GCP_REGION \
-              --network=default \
-              --tags=http-server \
-              --metadata=startup-script='#!/bin/bash
-              apt-get update
-              apt-get install -y unzip python3-pip curl
-              mkdir -p /opt/app
-              cd /opt/app
-              curl -L "'$ZIP_URL'" -o repo.zip
-              unzip repo.zip
-              cd circlecimig-main
-              pip3 install flask
-              nohup python3 app.py --host=0.0.0.0 --port=8080 > app.log 2>&1 &'
+            gcloud auth login --cred-file=creds.json
+            gcloud auth activate-service-account \
+              --key-file=creds.json
+            gcloud config set project sylvan-hydra-464904-d9
 
       - run:
-          name: 🔐 Ensure Firewall & Health Check
+          name: Example gcloud command
           command: |
-            gcloud compute firewall-rules describe $FIREWALL_RULE_NAME || \
-              gcloud compute firewall-rules create $FIREWALL_RULE_NAME \
-                --allow tcp:8080 \
-                --target-tags=http-server \
-                --direction=INGRESS \
-                --priority=1000
-
-            gcloud compute health-checks describe $HEALTH_CHECK_NAME || \
-              gcloud compute health-checks create http $HEALTH_CHECK_NAME \
-                --port=8080
-
-      - run:
-          name: 🚀 Create or Update MIG
-          command: |
-            source $BASH_ENV
-            if ! gcloud compute instance-groups managed describe $MIG_NAME --region=$GCP_REGION > /dev/null 2>&1; then
-              echo "Creating MIG..."
-              gcloud compute instance-groups managed create $MIG_NAME \
-                --region=$GCP_REGION \
-                --size=1 \
-                --template=${TEMPLATE_PREFIX}-${VERSION_TAG} \
-                --target-distribution-shape=EVEN
-            else
-              echo "Updating MIG template..."
-              gcloud compute instance-groups managed set-instance-template $MIG_NAME \
-                --template=${TEMPLATE_PREFIX}-${VERSION_TAG} \
-                --region=$GCP_REGION
-              echo "Rolling restart..."
-              gcloud compute instance-groups managed rolling-action restart $MIG_NAME \
-                --region=$GCP_REGION
-            fi
+            gcloud info
+            gcloud config list
 
 workflows:
-  version: 2
-  test-and-deploy:
+  deploy:
     jobs:
-      - test
-      - deploy-to-mig:
-          requires:
-            - test
+      - deploy-to-gcp
