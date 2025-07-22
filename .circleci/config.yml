@@ -1,57 +1,41 @@
 version: 2.1
 
-executors:
-  gcloud:
-    docker:
-      - image: google/cloud-sdk:slim
-    environment:
-      GOOGLE_CLOUD_PROJECT: sylvan-hydra-464904-d9
-      WORKLOAD_IDENTITY_PROVIDER: projects/57920515119/locations/global/workloadIdentityPools/circleci-oidc/providers/github
-      SERVICE_ACCOUNT_EMAIL: circleci-oidc@sylvan-hydra-464904-d9.iam.gserviceaccount.com
-
 jobs:
   deploy:
-    executor: gcloud
+    docker:
+      - image: google/cloud-sdk
     steps:
       - checkout
-
       - run:
-          name: Fetch ID token and authenticate to GCP
+          name: GCP OIDC auth
           command: |
-            # Fetch OIDC token from CircleCI's internal metadata endpoint
-            ID_TOKEN=$(curl -s -f --request GET \
-              --url http://169.254.169.254/computeMetadata/v1/instance/service-accounts/default/identity \
-              -H "Metadata-Flavor: Google" || true)
+            GCP_OIDC_PROVIDER_ID="circleci"
+            GCP_PROJECT_ID="${GCP_PROJECT_ID}"
+            GCP_SERVICE_ACCOUNT_EMAIL="circleci-oidc@${GCP_PROJECT_ID}.iam.gserviceaccount.com"
+            GCP_WORKLOAD_IDENTITY_POOL_ID="circleci-oidc"
+            GCP_OIDC_AUDIENCE="projects/${GCP_PROJECT_ID}/locations/global/workloadIdentityPools/${GCP_WORKLOAD_IDENTITY_POOL_ID}/providers/${GCP_OIDC_PROVIDER_ID}"
+            GCP_IMPERSONATION_URL="https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${GCP_SERVICE_ACCOUNT_EMAIL}:generateAccessToken"
 
-            if [ -z "$ID_TOKEN" ]; then
-              echo "Could not fetch identity token from CircleCI."
-              exit 1
-            fi
+            mkdir -p ~/.config/gcloud
+            echo "${CIRCLE_OIDC_TOKEN}" > $HOME/.config/gcloud/oidc_access_token
 
-            # Login to gcloud using Workload Identity Federation
-            gcloud auth login \
-              --brief \
-              --cred-file=<( \
-                gcloud iam workload-identity-pools create-cred-config \
-                  "$WORKLOAD_IDENTITY_PROVIDER" \
-                  --service-account="$SERVICE_ACCOUNT_EMAIL" \
-                  --output-file=- \
-                  --credential-source-url="http://metadata/identity/oauth2/token" \
-                  --credential-source-headers="Metadata-Flavor: Google" \
-                  --credential-source-type=metadata \
-                  --subject-token-type="urn:ietf:params:oauth:token-type:id_token"
-              )
+            cat >> $HOME/.config/gcloud/application_default_credentials.json <<- EOF
+            {
+              "type": "external_account",
+              "audience": "//iam.googleapis.com/${GCP_OIDC_AUDIENCE}",
+              "subject_token_type": "urn:ietf:params:oauth:token-type:jwt",
+              "token_url": "https://sts.googleapis.com/v1/token",
+              "credential_source": {
+                "file": "$HOME/.config/gcloud/oidc_access_token"
+              },
+              "service_account_impersonation_url": "${GCP_IMPERSONATION_URL}"
+            }
+            EOF
 
-            gcloud config set project $GOOGLE_CLOUD_PROJECT
-
-      - run:
-          name: Run gcloud command
-          command: |
-            echo "Authenticated! Listing GCE instances..."
-            gcloud compute instances list
+            gcloud auth application-default print-access-token
+            gcloud projects describe ${GCP_PROJECT_ID}
 
 workflows:
-  version: 2
-  deploy_on_main:
+  deploy-workflow:
     jobs:
       - deploy
