@@ -1,26 +1,29 @@
-version: 2.1
-
 jobs:
   deploy:
     docker:
       - image: google/cloud-sdk
+    environment:
+      GOOGLE_PROJECT_ID: sylvan-hydra-464904-d9
+      GOOGLE_PROJECT_NUMBER: 57920515119
+    permissions:
+      id-token: write   # <-- Required for CIRCLE_OIDC_TOKEN to be populated
     steps:
       - checkout
       - run:
-          name: GCP OIDC Auth
+          name: Authenticate to GCP via OIDC
           command: |
-            export GCP_PROJECT_ID="sylvan-hydra-464904-d9"
-            export GCP_PROJECT_NUMBER="57920515119"
+            export GCP_PROJECT_ID=$GOOGLE_PROJECT_ID
+            export GCP_PROJECT_NUMBER=$GOOGLE_PROJECT_NUMBER
             export GCP_WORKLOAD_IDENTITY_POOL_ID="circleci-oidc"
             export GCP_OIDC_PROVIDER_ID="circleci"
-            export GCP_SERVICE_ACCOUNT_EMAIL="circleci-oidc@sylvan-hydra-464904-d9.iam.gserviceaccount.com"
-            export GCP_OIDC_AUDIENCE="projects/57920515119/locations/global/workloadIdentityPools/circleci-oidc/providers/circleci"
+            export GCP_SERVICE_ACCOUNT_EMAIL="circleci-oidc@${GCP_PROJECT_ID}.iam.gserviceaccount.com"
+            export GCP_OIDC_AUDIENCE="projects/${GCP_PROJECT_NUMBER}/locations/global/workloadIdentityPools/${GCP_WORKLOAD_IDENTITY_POOL_ID}/providers/${GCP_OIDC_PROVIDER_ID}"
             export GCP_IMPERSONATION_URL="https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${GCP_SERVICE_ACCOUNT_EMAIL}:generateAccessToken"
 
             mkdir -p $HOME/.config/gcloud
             echo "${CIRCLE_OIDC_TOKEN}" > $HOME/.config/gcloud/oidc_access_token
 
-            cat \<<EOF > $HOME/.config/gcloud/application_default_credentials.json
+            cat <<EOF > $HOME/.config/gcloud/application_default_credentials.json
             {
               "type": "external_account",
               "audience": "//iam.googleapis.com/${GCP_OIDC_AUDIENCE}",
@@ -35,9 +38,11 @@ jobs:
 
             export GOOGLE_APPLICATION_CREDENTIALS="$HOME/.config/gcloud/application_default_credentials.json"
 
-            echo "Auth Token:" $(cat $HOME/.config/gcloud/oidc_access_token)
+            echo "Access Token:"
             gcloud auth application-default print-access-token
-            gcloud projects describe ${GCP_PROJECT_ID}
+            echo "Verifying GCP access..."
+            gcloud projects describe $GCP_PROJECT_ID
+
 
 workflows:
   deploy-workflow:
