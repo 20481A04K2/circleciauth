@@ -3,42 +3,40 @@ version: 2.1
 jobs:
   authenticate:
     docker:
-      - image: google/cloud-sdk:slim
-
+      - image: google/cloud-sdk:latest
     steps:
       - checkout
-
       - run:
           name: Authenticate to GCP using Workload Identity Federation
           command: |
             # Hardcoded values
             WORKLOAD_IDENTITY_PROVIDER="projects/57920515119/locations/global/workloadIdentityPools/circleci-identity-pool/providers/github"
             SERVICE_ACCOUNT_EMAIL="circleci-deploy-sa@sylvan-hydra-464904-d9.iam.gserviceaccount.com"
-            CREDENTIAL_SOURCE_FILE="/tmp/mock-oidc-token.json"
+            OIDC_TOKEN_FILE="/tmp/oidc-token"
             OUTPUT_CREDENTIAL_FILE="generated-wif-credentials.json"
 
-            # Create a dummy OIDC token file (this is just for simulation)
-            echo '{}' > "$CREDENTIAL_SOURCE_FILE"
+            # Save CircleCI OIDC token to file
+            echo "$CIRCLE_OIDC_TOKEN" > "$OIDC_TOKEN_FILE"
 
-            # Create credential config
+            # Generate credential config file
             gcloud iam workload-identity-pools create-cred-config \
               "$WORKLOAD_IDENTITY_PROVIDER" \
               --service-account="$SERVICE_ACCOUNT_EMAIL" \
               --output-file="$OUTPUT_CREDENTIAL_FILE" \
-              --credential-source-file="$CREDENTIAL_SOURCE_FILE"
+              --credential-source-file="$OIDC_TOKEN_FILE" \
+              --credential-source-type=oidc
 
             # Authenticate using the generated credentials
-            gcloud auth login --brief --cred-file="$OUTPUT_CREDENTIAL_FILE" || true
+            gcloud auth login --cred-file="$OUTPUT_CREDENTIAL_FILE" --brief
 
-            # Validate if access token can be retrieved
+            # Validate token
             TOKEN=$(gcloud auth print-access-token 2>/dev/null)
             if [ -n "$TOKEN" ]; then
               echo "✅ Authenticated successfully with WIF"
             else
               echo "❌ Authentication failed: Access token not retrieved"
               exit 1
-            fi
-
+            end
 workflows:
   wif-auth-flow:
     jobs:
