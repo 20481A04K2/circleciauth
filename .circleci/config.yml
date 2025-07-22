@@ -10,7 +10,7 @@ jobs:
           name: GCP OIDC auth
           command: |
             GCP_OIDC_PROVIDER_ID="circleci"
-            GCP_PROJECT_ID="${GCP_PROJECT_ID}"
+            GCP_PROJECT_ID="57920515119"
             GCP_SERVICE_ACCOUNT_EMAIL="circleci-oidc@${GCP_PROJECT_ID}.iam.gserviceaccount.com"
             GCP_WORKLOAD_IDENTITY_POOL_ID="circleci-oidc"
             GCP_OIDC_AUDIENCE="projects/${GCP_PROJECT_ID}/locations/global/workloadIdentityPools/${GCP_WORKLOAD_IDENTITY_POOL_ID}/providers/${GCP_OIDC_PROVIDER_ID}"
