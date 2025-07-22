@@ -15,7 +15,7 @@ jobs:
             export GCP_OIDC_PROVIDER_ID="circleci"
             export GCP_SERVICE_ACCOUNT_EMAIL="circleci-oidc@sylvan-hydra-464904-d9.iam.gserviceaccount.com"
             export GCP_OIDC_AUDIENCE="projects/57920515119/locations/global/workloadIdentityPools/circleci-oidc/providers/circleci"
-            export GCP_IMPERSONATION_URL="https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/circleci-oidc@sylvan-hydra-464904-d9.iam.gserviceaccount.com:generateAccessToken"
+            export GCP_IMPERSONATION_URL="https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${GCP_SERVICE_ACCOUNT_EMAIL}:generateAccessToken"
 
             mkdir -p $HOME/.config/gcloud
             echo "${CIRCLE_OIDC_TOKEN}" > $HOME/.config/gcloud/oidc_access_token
@@ -33,6 +33,9 @@ jobs:
             }
             EOF
 
+            export GOOGLE_APPLICATION_CREDENTIALS="$HOME/.config/gcloud/application_default_credentials.json"
+
+            echo "Auth Token:" $(cat $HOME/.config/gcloud/oidc_access_token)
             gcloud auth application-default print-access-token
             gcloud projects describe ${GCP_PROJECT_ID}
 
