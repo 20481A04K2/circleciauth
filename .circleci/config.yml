@@ -1,48 +1,46 @@
 version: 2.1
 
-jobs:
-  authenticate:
+executors:
+  default:
     docker:
-      - image: google/cloud-sdk:latest
+      - image: cimg/base:stable
+
+jobs:
+  deploy:
+    executor: default
     steps:
       - checkout
+
       - run:
-          name: Authenticate to GCP using Workload Identity Federation
+          name: Install gcloud SDK
           command: |
-            echo "🔐 Starting GCP authentication with WIF..."
+            sudo apt-get update
+            sudo apt-get install -y apt-transport-https ca-certificates gnupg
+            echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | \
+              sudo tee -a /etc/apt/sources.list.d/google-cloud-sdk.list
+            curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | \
+              sudo apt-key --keyring /usr/share/keyrings/cloud.google.gpg add -
+            sudo apt-get update && sudo apt-get install -y google-cloud-sdk
 
-            # === Hardcoded values ===
-            WORKLOAD_IDENTITY_PROVIDER="projects/57920515119/locations/global/workloadIdentityPools/circleci-identity-pool/providers/github"
-            SERVICE_ACCOUNT_EMAIL="circleci-deploy-sa@sylvan-hydra-464904-d9.iam.gserviceaccount.com"
-            OIDC_TOKEN_FILE="/tmp/oidc-token"
-            OUTPUT_CREDENTIAL_FILE="/tmp/generated-wif-credentials.json"
+      - run:
+          name: Authenticate to Google Cloud using Workload Identity Federation (OIDC)
+          command: |
+            gcloud config set project sylvan-hydra-464904-d9
 
-            # === Save CircleCI OIDC token to a file ===
-            echo "$CIRCLE_OIDC_TOKEN" > "$OIDC_TOKEN_FILE"
-
-            # === Create credential config file for GCP ===
             gcloud iam workload-identity-pools create-cred-config \
-              "$WORKLOAD_IDENTITY_PROVIDER" \
-              --service-account="$SERVICE_ACCOUNT_EMAIL" \
-              --output-file="$OUTPUT_CREDENTIAL_FILE" \
-              --credential-source-file="$OIDC_TOKEN_FILE" \
-              --credential-source-type=text
+              "projects/57920515119/locations/global/workloadIdentityPools/circleci-identity-pool/providers/circleci-oidc" \
+              --service-account="circleci-deploy-sa@sylvan-hydra-464904-d9.iam.gserviceaccount.com" \
+              --output-file="gcloud-credentials.json"
 
-            # === Authenticate using generated credential config ===
-            gcloud auth login --cred-file="$OUTPUT_CREDENTIAL_FILE" --brief
+            gcloud auth login --cred-file="gcloud-credentials.json"
 
-            # === Test authentication ===
-            ACCESS_TOKEN=$(gcloud auth print-access-token 2>/dev/null)
-
-            if [ -n "$ACCESS_TOKEN" ]; then
-              echo "✅ Authenticated successfully to GCP with WIF!"
-            else
-              echo "❌ Authentication failed. No access token returned."
-              exit 1
-            fi
+      - run:
+          name: Example GCP Command - List Buckets
+          command: |
+            gcloud storage buckets list
 
 workflows:
-  wif-auth-flow:
+  version: 2
+  deploy:
     jobs:
-      - authenticate:
-          context: gcp-wif
+      - deploy
