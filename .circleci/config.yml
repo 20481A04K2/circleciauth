@@ -10,19 +10,20 @@ jobs:
           name: GCP OIDC auth
           command: |
             GCP_OIDC_PROVIDER_ID="circleci"
-            GCP_PROJECT_ID="57920515119"
+            GCP_PROJECT_ID="sylvan-hydra-464904-d9"
+            GCP_PROJECT_NUMBER="57920515119"
             GCP_SERVICE_ACCOUNT_EMAIL="circleci-oidc@${GCP_PROJECT_ID}.iam.gserviceaccount.com"
             GCP_WORKLOAD_IDENTITY_POOL_ID="circleci-oidc"
-            GCP_OIDC_AUDIENCE="projects/${GCP_PROJECT_ID}/locations/global/workloadIdentityPools/${GCP_WORKLOAD_IDENTITY_POOL_ID}/providers/${GCP_OIDC_PROVIDER_ID}"
+            GCP_OIDC_AUDIENCE="//iam.googleapis.com/projects/${GCP_PROJECT_NUMBER}/locations/global/workloadIdentityPools/${GCP_WORKLOAD_IDENTITY_POOL_ID}/providers/${GCP_OIDC_PROVIDER_ID}"
             GCP_IMPERSONATION_URL="https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${GCP_SERVICE_ACCOUNT_EMAIL}:generateAccessToken"
 
-            mkdir -p ~/.config/gcloud
+            mkdir -p $HOME/.config/gcloud
             echo "${CIRCLE_OIDC_TOKEN}" > $HOME/.config/gcloud/oidc_access_token
 
-            cat \<<EOF > $HOME/.config/gcloud/application_default_credentials.json
+            cat > $HOME/.config/gcloud/application_default_credentials.json << EOF
             {
               "type": "external_account",
-              "audience": "//iam.googleapis.com/${GCP_OIDC_AUDIENCE}",
+              "audience": "${GCP_OIDC_AUDIENCE}",
               "subject_token_type": "urn:ietf:params:oauth:token-type:jwt",
               "token_url": "https://sts.googleapis.com/v1/token",
               "credential_source": {
@@ -30,7 +31,7 @@ jobs:
               },
               "service_account_impersonation_url": "${GCP_IMPERSONATION_URL}"
             }
-            EOF
+EOF
 
             gcloud auth application-default print-access-token
             gcloud projects describe ${GCP_PROJECT_ID}
