@@ -17,10 +17,10 @@ jobs:
             GCP_OIDC_AUDIENCE="projects/${GCP_PROJECT_NUMBER}/locations/global/workloadIdentityPools/${GCP_WORKLOAD_IDENTITY_POOL_ID}/providers/${GCP_OIDC_PROVIDER_ID}"
             GCP_IMPERSONATION_URL="https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${GCP_SERVICE_ACCOUNT_EMAIL}:generateAccessToken"
 
-            mkdir -p $HOME/.config/gcloud
-            echo "${CIRCLE_OIDC_TOKEN}" > $HOME/.config/gcloud/oidc_access_token
+            mkdir -p "$HOME/.config/gcloud"
+            echo "${CIRCLE_OIDC_TOKEN}" > "$HOME/.config/gcloud/oidc_access_token"
 
-            cat > $HOME/.config/gcloud/application_default_credentials.json <<EOF
+            cat <<EOF > "$HOME/.config/gcloud/application_default_credentials.json"
             {
               "type": "external_account",
               "audience": "//iam.googleapis.com/${GCP_OIDC_AUDIENCE}",
@@ -34,7 +34,7 @@ jobs:
 EOF
 
             gcloud auth application-default print-access-token
-            gcloud projects describe ${GCP_PROJECT_ID}
+            gcloud projects describe "${GCP_PROJECT_ID}"
 
 workflows:
   deploy-workflow:
