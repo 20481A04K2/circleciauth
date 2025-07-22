@@ -9,12 +9,13 @@ jobs:
       - run:
           name: GCP OIDC auth
           command: |
-            GCP_OIDC_PROVIDER_ID="circleci"
-            GCP_PROJECT_ID="${GCP_PROJECT_ID}"
-            GCP_SERVICE_ACCOUNT_EMAIL="circleci-oidc@${GCP_PROJECT_ID}.iam.gserviceaccount.com"
-            GCP_WORKLOAD_IDENTITY_POOL_ID="circleci-oidc"
-            GCP_OIDC_AUDIENCE="projects/${GCP_PROJECT_ID}/locations/global/workloadIdentityPools/${GCP_WORKLOAD_IDENTITY_POOL_ID}/providers/${GCP_OIDC_PROVIDER_ID}"
-            GCP_IMPERSONATION_URL="https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${GCP_SERVICE_ACCOUNT_EMAIL}:generateAccessToken"
+            GCP_PROJECT_ID: "sylvan-hydra-464904-d9"
+            GCP_PROJECT_NUMBER: "57920515119"
+            GCP_WORKLOAD_IDENTITY_POOL_ID: "circleci-oidc"
+            GCP_OIDC_PROVIDER_ID: "circleci"
+            GCP_SERVICE_ACCOUNT_EMAIL: "circleci-oidc@sylvan-hydra-464904-d9.iam.gserviceaccount.com"
+            GCP_OIDC_AUDIENCE: "projects/57920515119/locations/global/workloadIdentityPools/circleci-oidc/providers/circleci"
+            GCP_IMPERSONATION_URL: "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/circleci-oidc@sylvan-hydra-464904-d9.iam.gserviceaccount.com:generateAccessToken"
 
             mkdir -p ~/.config/gcloud
             echo "${CIRCLE_OIDC_TOKEN}" > $HOME/.config/gcloud/oidc_access_token
