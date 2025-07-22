@@ -7,18 +7,16 @@ jobs:
     environment:
       GOOGLE_PROJECT_ID: sylvan-hydra-464904-d9
       GOOGLE_PROJECT_NUMBER: "57920515119"
+      GCP_WORKLOAD_IDENTITY_POOL_ID: "circleci-oidc"
+      GCP_OIDC_PROVIDER_ID: "circleci"
     steps:
       - checkout
 
       - run:
-          name: Authenticate to GCP via OIDC (WIF)
+          name: Authenticate to GCP using Workload Identity Federation (OIDC)
           command: |
-            export GCP_PROJECT_ID=$GOOGLE_PROJECT_ID
-            export GCP_PROJECT_NUMBER=$GOOGLE_PROJECT_NUMBER
-            export GCP_WORKLOAD_IDENTITY_POOL_ID="circleci-oidc"
-            export GCP_OIDC_PROVIDER_ID="circleci"
-            export GCP_SERVICE_ACCOUNT_EMAIL="circleci-oidc@${GCP_PROJECT_ID}.iam.gserviceaccount.com"
-            export GCP_OIDC_AUDIENCE="projects/${GCP_PROJECT_NUMBER}/locations/global/workloadIdentityPools/${GCP_WORKLOAD_IDENTITY_POOL_ID}/providers/${GCP_OIDC_PROVIDER_ID}"
+            export GCP_SERVICE_ACCOUNT_EMAIL="circleci-oidc@${GOOGLE_PROJECT_ID}.iam.gserviceaccount.com"
+            export GCP_OIDC_AUDIENCE="projects/${GOOGLE_PROJECT_NUMBER}/locations/global/workloadIdentityPools/${GCP_WORKLOAD_IDENTITY_POOL_ID}/providers/${GCP_OIDC_PROVIDER_ID}"
             export GCP_IMPERSONATION_URL="https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${GCP_SERVICE_ACCOUNT_EMAIL}:generateAccessToken"
 
             mkdir -p $HOME/.config/gcloud
@@ -39,10 +37,11 @@ jobs:
 
             export GOOGLE_APPLICATION_CREDENTIALS="$HOME/.config/gcloud/application_default_credentials.json"
 
-            echo "Access Token:"
+            echo "✅ Access Token:"
             gcloud auth application-default print-access-token
-            echo "Verifying GCP access..."
-            gcloud projects describe $GCP_PROJECT_ID
+
+            echo "✅ Verifying GCP access:"
+            gcloud projects describe $GOOGLE_PROJECT_ID
 
 workflows:
   deploy-workflow:
