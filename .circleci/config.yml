@@ -1,46 +1,38 @@
 version: 2.1
 
 executors:
-  default:
+  gcloud:
     docker:
-      - image: cimg/base:stable
+      - image: google/cloud-sdk:slim
+    environment:
+      GOOGLE_CLOUD_PROJECT: sylvan-hydra-464904-d9
+      WORKLOAD_IDENTITY_PROVIDER: projects/57920515119/locations/global/workloadIdentityPools/circleci-oidc/providers/github
+      SERVICE_ACCOUNT_EMAIL: circleci-oidc@sylvan-hydra-464904-d9.iam.gserviceaccount.com
 
 jobs:
   deploy:
-    executor: default
+    executor: gcloud
     steps:
       - checkout
 
       - run:
-          name: Install gcloud SDK
+          name: Authenticate to Google Cloud
           command: |
-            sudo apt-get update
-            sudo apt-get install -y apt-transport-https ca-certificates gnupg
-            echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | \
-              sudo tee -a /etc/apt/sources.list.d/google-cloud-sdk.list
-            curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | \
-              sudo apt-key --keyring /usr/share/keyrings/cloud.google.gpg add -
-            sudo apt-get update && sudo apt-get install -y google-cloud-sdk
-
-      - run:
-          name: Authenticate to Google Cloud using Workload Identity Federation (OIDC)
-          command: |
-            gcloud config set project sylvan-hydra-464904-d9
+            gcloud auth login --brief || true
+            gcloud auth list
 
             gcloud iam workload-identity-pools create-cred-config \
-              "projects/57920515119/locations/global/workloadIdentityPools/circleci-identity-pool/providers/circleci-oidc" \
-              --service-account="circleci-deploy-sa@sylvan-hydra-464904-d9.iam.gserviceaccount.com" \
-              --output-file="gcloud-credentials.json"
+              "${WORKLOAD_IDENTITY_PROVIDER}" \
+              --service-account="${SERVICE_ACCOUNT_EMAIL}" \
+              --output-file=creds.json \
+              --credential-source-file="${HOME}/.config/gcloud/legacy_credentials/$(gcloud config get-value account)/adc.json"
 
-            gcloud auth login --cred-file="gcloud-credentials.json"
+            gcloud auth login --cred-file=creds.json
+            gcloud auth activate-service-account --key-file=creds.json
+            gcloud config set project $GOOGLE_CLOUD_PROJECT
 
       - run:
-          name: Example GCP Command - List Buckets
+          name: Deploy / Your Custom Command
           command: |
-            gcloud storage buckets list
-
-workflows:
-  version: 2
-  deploy:
-    jobs:
-      - deploy
+            echo "Authenticated! Running gcloud command..."
+            gcloud compute instances list
