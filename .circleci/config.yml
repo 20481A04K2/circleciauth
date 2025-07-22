@@ -24,7 +24,7 @@ jobs:
               --service-account="$SERVICE_ACCOUNT_EMAIL" \
               --output-file="$OUTPUT_CREDENTIAL_FILE" \
               --credential-source-file="$OIDC_TOKEN_FILE" \
-              --credential-source-type=oidc
+              --credential-source-type=text
 
             # Authenticate using the generated credentials
             gcloud auth login --cred-file="$OUTPUT_CREDENTIAL_FILE" --brief
