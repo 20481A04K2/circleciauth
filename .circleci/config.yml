@@ -8,7 +8,6 @@ executors:
 jobs:
   deploy:
     executor: gcp-executor
-    context: gcp-wif  # Secure context with env vars & secrets
     environment:
       GOOGLE_PROJECT_ID: sylvan-hydra-464904-d9
       GOOGLE_PROJECT_NUMBER: "57920515119"
@@ -55,4 +54,5 @@ jobs:
 workflows:
   deploy-workflow:
     jobs:
-      - deploy
+      - deploy:
+          context: gcp-wif  # Apply context at the workflow level
