@@ -1,13 +1,12 @@
 version: 2.1
+
 jobs:
   deploy:
     docker:
       - image: google/cloud-sdk
     environment:
       GOOGLE_PROJECT_ID: sylvan-hydra-464904-d9
-      GOOGLE_PROJECT_NUMBER: 57920515119
-    permissions:
-      id-token: write   # <-- Required for CIRCLE_OIDC_TOKEN to be populated
+      GOOGLE_PROJECT_NUMBER: "57920515119"
     steps:
       - checkout
       - run:
@@ -24,7 +23,7 @@ jobs:
             mkdir -p $HOME/.config/gcloud
             echo "${CIRCLE_OIDC_TOKEN}" > $HOME/.config/gcloud/oidc_access_token
 
-            cat <<EOF > $HOME/.config/gcloud/application_default_credentials.json
+            cat \<<EOF > $HOME/.config/gcloud/application_default_credentials.json
             {
               "type": "external_account",
               "audience": "//iam.googleapis.com/${GCP_OIDC_AUDIENCE}",
@@ -43,7 +42,6 @@ jobs:
             gcloud auth application-default print-access-token
             echo "Verifying GCP access..."
             gcloud projects describe $GCP_PROJECT_ID
-
 
 workflows:
   deploy-workflow:
