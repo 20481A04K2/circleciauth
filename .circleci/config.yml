@@ -1,42 +1,43 @@
 version: 2.1
 
-jobs:
-  deploy-to-gcp:
+executors:
+  default:
     docker:
-      - image: google/cloud-sdk:latest
+      - image: google/cloud-sdk:slim
 
+jobs:
+  deploy:
+    executor: default
     steps:
       - checkout
 
       - run:
-          name: Authenticate to Google Cloud with Workload Identity Federation
+          name: Authenticate to Google Cloud using Workload Identity Federation
           command: |
-            gcloud auth login --brief
-            gcloud auth print-identity-token
+            export GOOGLE_WORKLOAD_IDENTITY_PROVIDER="projects/57920515119/locations/global/workloadIdentityPools/circleci-identity-pool/providers/github"
+            export GOOGLE_SERVICE_ACCOUNT="circleci-deploy-sa@sylvan-hydra-464904-d9.iam.gserviceaccount.com"
 
-      - run:
-          name: Set up Workload Identity Federation credentials
-          command: |
-            gcloud iam workload-identity-pools create-cred-config \
-              projects/57920515119/locations/global/workloadIdentityPools/circleci-identity-pool/providers/github \
-              --service-account=circleci-deploy-sa@sylvan-hydra-464904-d9.iam.gserviceaccount.com \
-              --output-file=creds.json
+            gcloud auth login --brief || {
+              echo "❌ Authentication failed."
+              exit 1
+            }
 
-      - run:
-          name: Authenticate with GCP using WIF
-          command: |
-            gcloud auth login --cred-file=creds.json
-            gcloud auth activate-service-account \
-              --key-file=creds.json
-            gcloud config set project sylvan-hydra-464904-d9
+            gcloud auth workload-identity-federation configure \
+              --workload-identity-provider="$GOOGLE_WORKLOAD_IDENTITY_PROVIDER" \
+              --service-account="$GOOGLE_SERVICE_ACCOUNT" \
+              --quiet
 
-      - run:
-          name: Example gcloud command
-          command: |
-            gcloud info
-            gcloud config list
+            gcloud config set account "$GOOGLE_SERVICE_ACCOUNT"
+
+            TOKEN=$(gcloud auth print-identity-token)
+            if [ -n "$TOKEN" ]; then
+              echo "✅ Authenticated successfully with WIF"
+            else
+              echo "❌ Failed to retrieve identity token"
+              exit 1
+            }
 
 workflows:
-  deploy:
+  deploy_to_gcp:
     jobs:
-      - deploy-to-gcp
+      - deploy
