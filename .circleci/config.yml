@@ -1,34 +1,29 @@
 version: 2.1
 
-executors:
-  default:
-    docker:
-      - image: google/cloud-sdk:slim
-
 jobs:
-  deploy:
-    executor: default
+  authenticate:
+    docker:
+      - image: google/cloud-sdk:latest
     steps:
       - checkout
 
       - run:
           name: Authenticate to Google Cloud using Workload Identity Federation
           command: |
-            export GOOGLE_WORKLOAD_IDENTITY_PROVIDER="projects/57920515119/locations/global/workloadIdentityPools/circleci-identity-pool/providers/github"
-            export GOOGLE_SERVICE_ACCOUNT="circleci-deploy-sa@sylvan-hydra-464904-d9.iam.gserviceaccount.com"
+            # Hardcoded variables
+            GOOGLE_WORKLOAD_IDENTITY_PROVIDER="projects/57920515119/locations/global/workloadIdentityPools/circleci-identity-pool/providers/github"
+            GOOGLE_SERVICE_ACCOUNT="circleci-deploy-sa@sylvan-hydra-464904-d9.iam.gserviceaccount.com"
 
-            gcloud auth login --brief || {
-              echo "❌ Authentication failed."
-              exit 1
-            }
-
+            # Authenticate to GCP using WIF
             gcloud auth workload-identity-federation configure \
               --workload-identity-provider="$GOOGLE_WORKLOAD_IDENTITY_PROVIDER" \
               --service-account="$GOOGLE_SERVICE_ACCOUNT" \
               --quiet
 
+            # Set the service account as the current account
             gcloud config set account "$GOOGLE_SERVICE_ACCOUNT"
 
+            # Validate authentication
             TOKEN=$(gcloud auth print-identity-token)
             if [ -n "$TOKEN" ]; then
               echo "✅ Authenticated successfully with WIF"
@@ -38,6 +33,6 @@ jobs:
             }
 
 workflows:
-  deploy_to_gcp:
+  authenticate-workflow:
     jobs:
-      - deploy
+      - authenticate
