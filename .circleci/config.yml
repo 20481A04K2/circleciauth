@@ -17,7 +17,6 @@ jobs:
           command: |
             export GCP_SERVICE_ACCOUNT_EMAIL="circleci-oidc@${GOOGLE_PROJECT_ID}.iam.gserviceaccount.com"
             export GCP_OIDC_AUDIENCE="projects/${GOOGLE_PROJECT_NUMBER}/locations/global/workloadIdentityPools/${GCP_WORKLOAD_IDENTITY_POOL_ID}/providers/${GCP_OIDC_PROVIDER_ID}"
-            export GCP_IMPERSONATION_URL="https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${GCP_SERVICE_ACCOUNT_EMAIL}:generateAccessToken"
 
             mkdir -p $HOME/.config/gcloud
             echo "${CIRCLE_OIDC_TOKEN}" > $HOME/.config/gcloud/oidc_access_token
@@ -31,7 +30,7 @@ jobs:
               "credential_source": {
                 "file": "$HOME/.config/gcloud/oidc_access_token"
               },
-              "service_account_impersonation_url": "${GCP_IMPERSONATION_URL}"
+              "service_account_impersonation_url": "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${GCP_SERVICE_ACCOUNT_EMAIL}:generateAccessToken"
             }
             EOF
 
@@ -40,8 +39,8 @@ jobs:
             echo "✅ Access Token:"
             gcloud auth application-default print-access-token
 
-            echo "✅ Verifying GCP access:"
-            gcloud projects describe $GOOGLE_PROJECT_ID
+            echo "✅ Verifying GCP access (via impersonation):"
+            gcloud --impersonate-service-account=$GCP_SERVICE_ACCOUNT_EMAIL projects describe $GOOGLE_PROJECT_ID
 
 workflows:
   deploy-workflow:
