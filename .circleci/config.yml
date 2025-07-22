@@ -9,8 +9,9 @@ jobs:
       GOOGLE_PROJECT_NUMBER: "57920515119"
     steps:
       - checkout
+
       - run:
-          name: Authenticate to GCP via OIDC
+          name: Authenticate to GCP via OIDC (WIF)
           command: |
             export GCP_PROJECT_ID=$GOOGLE_PROJECT_ID
             export GCP_PROJECT_NUMBER=$GOOGLE_PROJECT_NUMBER
