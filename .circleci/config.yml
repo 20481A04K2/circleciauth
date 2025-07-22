@@ -9,16 +9,18 @@ jobs:
       - run:
           name: Authenticate to GCP using Workload Identity Federation
           command: |
-            # Hardcoded values
+            echo "🔐 Starting GCP authentication with WIF..."
+
+            # === Hardcoded values ===
             WORKLOAD_IDENTITY_PROVIDER="projects/57920515119/locations/global/workloadIdentityPools/circleci-identity-pool/providers/github"
             SERVICE_ACCOUNT_EMAIL="circleci-deploy-sa@sylvan-hydra-464904-d9.iam.gserviceaccount.com"
             OIDC_TOKEN_FILE="/tmp/oidc-token"
-            OUTPUT_CREDENTIAL_FILE="generated-wif-credentials.json"
+            OUTPUT_CREDENTIAL_FILE="/tmp/generated-wif-credentials.json"
 
-            # Save CircleCI OIDC token to file
+            # === Save CircleCI OIDC token to a file ===
             echo "$CIRCLE_OIDC_TOKEN" > "$OIDC_TOKEN_FILE"
 
-            # Generate credential config file
+            # === Create credential config file for GCP ===
             gcloud iam workload-identity-pools create-cred-config \
               "$WORKLOAD_IDENTITY_PROVIDER" \
               --service-account="$SERVICE_ACCOUNT_EMAIL" \
@@ -26,18 +28,21 @@ jobs:
               --credential-source-file="$OIDC_TOKEN_FILE" \
               --credential-source-type=text
 
-            # Authenticate using the generated credentials
+            # === Authenticate using generated credential config ===
             gcloud auth login --cred-file="$OUTPUT_CREDENTIAL_FILE" --brief
 
-            # Validate token
-            TOKEN=$(gcloud auth print-access-token 2>/dev/null)
-            if [ -n "$TOKEN" ]; then
-              echo "✅ Authenticated successfully with WIF"
+            # === Test authentication ===
+            ACCESS_TOKEN=$(gcloud auth print-access-token 2>/dev/null)
+
+            if [ -n "$ACCESS_TOKEN" ]; then
+              echo "✅ Authenticated successfully to GCP with WIF!"
             else
-              echo "❌ Authentication failed: Access token not retrieved"
+              echo "❌ Authentication failed. No access token returned."
               exit 1
             fi
+
 workflows:
   wif-auth-flow:
     jobs:
-      - authenticate
+      - authenticate:
+          context: gcp-wif
