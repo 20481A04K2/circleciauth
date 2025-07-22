@@ -7,21 +7,20 @@ jobs:
     steps:
       - checkout
       - run:
-          name: GCP OIDC auth
+          name: GCP OIDC Auth
           command: |
-            GCP_PROJECT_ID: "sylvan-hydra-464904-d9"
-            GCP_PROJECT_NUMBER: "57920515119"
-            GCP_WORKLOAD_IDENTITY_POOL_ID: "circleci-oidc"
-            GCP_OIDC_PROVIDER_ID: "circleci"
-            GCP_SERVICE_ACCOUNT_EMAIL: "circleci-oidc@sylvan-hydra-464904-d9.iam.gserviceaccount.com"
-            GCP_OIDC_AUDIENCE: "projects/57920515119/locations/global/workloadIdentityPools/circleci-oidc/providers/circleci"
-            GCP_IMPERSONATION_URL: "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/circleci-oidc@sylvan-hydra-464904-d9.iam.gserviceaccount.com:generateAccessToken"
+            export GCP_PROJECT_ID="sylvan-hydra-464904-d9"
+            export GCP_PROJECT_NUMBER="57920515119"
+            export GCP_WORKLOAD_IDENTITY_POOL_ID="circleci-oidc"
+            export GCP_OIDC_PROVIDER_ID="circleci"
+            export GCP_SERVICE_ACCOUNT_EMAIL="circleci-oidc@sylvan-hydra-464904-d9.iam.gserviceaccount.com"
+            export GCP_OIDC_AUDIENCE="projects/57920515119/locations/global/workloadIdentityPools/circleci-oidc/providers/circleci"
+            export GCP_IMPERSONATION_URL="https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/circleci-oidc@sylvan-hydra-464904-d9.iam.gserviceaccount.com:generateAccessToken"
 
-            mkdir -p ~/.config/gcloud
+            mkdir -p $HOME/.config/gcloud
             echo "${CIRCLE_OIDC_TOKEN}" > $HOME/.config/gcloud/oidc_access_token
 
-            # Use \<< to escape the heredoc in YAML
-            cat \<<EOF > $HOME/.config/gcloud/application_default_credentials.json
+            cat <<EOF > $HOME/.config/gcloud/application_default_credentials.json
             {
               "type": "external_account",
               "audience": "//iam.googleapis.com/${GCP_OIDC_AUDIENCE}",
