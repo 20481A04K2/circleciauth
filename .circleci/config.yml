@@ -1,9 +1,14 @@
 version: 2.1
 
+executors:
+  default:
+    docker:
+      - image: google/cloud-sdk:slim
+    working_directory: ~/app
+
 jobs:
   authenticate:
-    docker:
-      - image: google/cloud-sdk:latest
+    executor: default
     steps:
       - checkout
 
@@ -14,13 +19,17 @@ jobs:
             GOOGLE_WORKLOAD_IDENTITY_PROVIDER="projects/57920515119/locations/global/workloadIdentityPools/circleci-identity-pool/providers/github"
             GOOGLE_SERVICE_ACCOUNT="circleci-deploy-sa@sylvan-hydra-464904-d9.iam.gserviceaccount.com"
 
-            # Authenticate to GCP using WIF
-            gcloud auth workload-identity-federation configure \
-              --workload-identity-provider="$GOOGLE_WORKLOAD_IDENTITY_PROVIDER" \
+            # Create credentials JSON for federation
+            gcloud iam workload-identity-pools create-cred-config \
+              "$GOOGLE_WORKLOAD_IDENTITY_PROVIDER" \
               --service-account="$GOOGLE_SERVICE_ACCOUNT" \
-              --quiet
+              --output-file=generated-wif-credentials.json \
+              --credential-source-file=/tmp/mock-oidc-token.json || echo "{}" > /tmp/mock-oidc-token.json
 
-            # Set the service account as the current account
+            # Activate credentials
+            gcloud auth activate-service-account --key-file=generated-wif-credentials.json
+
+            # Set account
             gcloud config set account "$GOOGLE_SERVICE_ACCOUNT"
 
             # Validate authentication
@@ -30,9 +39,10 @@ jobs:
             else
               echo "❌ Failed to retrieve identity token"
               exit 1
-            }
+            fi
 
 workflows:
+  version: 2
   authenticate-workflow:
     jobs:
       - authenticate
