@@ -1,13 +1,9 @@
 version: 2.1
 
 jobs:
-  deploy:
+  authenticate:
     docker:
-      - image: google/cloud-sdk:latest
-
-    environment:
-      GOOGLE_WORKLOAD_IDENTITY_PROVIDER: "projects/57920515119/locations/global/workloadIdentityPools/circleci-identity-pool/providers/github"
-      GOOGLE_SERVICE_ACCOUNT: "circleci-deploy-sa@sylvan-hydra-464904-d9.iam.gserviceaccount.com"
+      - image: google/cloud-sdk:slim
 
     steps:
       - checkout
@@ -15,39 +11,35 @@ jobs:
       - run:
           name: Authenticate to GCP using Workload Identity Federation
           command: |
-            # Install required tool
-            apt-get update && apt-get install -y curl jq
+            # Hardcoded values
+            WORKLOAD_IDENTITY_PROVIDER="projects/57920515119/locations/global/workloadIdentityPools/circleci-identity-pool/providers/github"
+            SERVICE_ACCOUNT_EMAIL="circleci-deploy-sa@sylvan-hydra-464904-d9.iam.gserviceaccount.com"
+            CREDENTIAL_SOURCE_FILE="/tmp/mock-oidc-token.json"
+            OUTPUT_CREDENTIAL_FILE="generated-wif-credentials.json"
 
-            # Extract OIDC token from CircleCI (automatically available in env)
-            OIDC_TOKEN_URL="http://169.254.169.254/computeMetadata/v1/instance/service-accounts/default/identity"
-            OIDC_TOKEN=$(curl -s -H "Metadata-Flavor: Google" "${OIDC_TOKEN_URL}?audience=YOUR_AUDIENCE&format=full")
+            # Create a dummy OIDC token file (this is just for simulation)
+            echo '{}' > "$CREDENTIAL_SOURCE_FILE"
 
-            if [ -z "$OIDC_TOKEN" ]; then
-              echo "❌ Failed to get OIDC token from metadata server"
-              exit 1
-            fi
-
-            # Create temporary credentials config
+            # Create credential config
             gcloud iam workload-identity-pools create-cred-config \
-              "$GOOGLE_WORKLOAD_IDENTITY_PROVIDER" \
-              --service-account="$GOOGLE_SERVICE_ACCOUNT" \
-              --output-file=generated-wif-credentials.json \
-              --credential-source-file=<(echo "{\"token\": \"$OIDC_TOKEN\"}")
+              "$WORKLOAD_IDENTITY_PROVIDER" \
+              --service-account="$SERVICE_ACCOUNT_EMAIL" \
+              --output-file="$OUTPUT_CREDENTIAL_FILE" \
+              --credential-source-file="$CREDENTIAL_SOURCE_FILE"
 
-            # Activate credentials
-            gcloud auth activate-service-account --key-file=generated-wif-credentials.json
+            # Authenticate using the generated credentials
+            gcloud auth login --brief --cred-file="$OUTPUT_CREDENTIAL_FILE" || true
 
-            # Verify authentication
-            gcloud config set account "$GOOGLE_SERVICE_ACCOUNT"
-            if gcloud auth print-access-token > /dev/null 2>&1; then
+            # Validate if access token can be retrieved
+            TOKEN=$(gcloud auth print-access-token 2>/dev/null)
+            if [ -n "$TOKEN" ]; then
               echo "✅ Authenticated successfully with WIF"
             else
-              echo "❌ Authentication failed"
+              echo "❌ Authentication failed: Access token not retrieved"
               exit 1
             fi
 
-      - run:
-          name: Example GCP Command
-          command: |
-            gcloud info
-            gcloud config list
+workflows:
+  wif-auth-flow:
+    jobs:
+      - authenticate
