@@ -36,11 +36,14 @@ jobs:
 
             export GOOGLE_APPLICATION_CREDENTIALS="$HOME/.config/gcloud/application_default_credentials.json"
 
-            echo "✅ Access Token:"
-            gcloud auth application-default print-access-token
+            echo "✅ Setting impersonated account as active..."
+            gcloud config set account "${GCP_SERVICE_ACCOUNT_EMAIL}"
 
             echo "✅ Verifying GCP access (via impersonation):"
-            gcloud --impersonate-service-account=$GCP_SERVICE_ACCOUNT_EMAIL projects describe $GOOGLE_PROJECT_ID
+            gcloud --impersonate-service-account="${GCP_SERVICE_ACCOUNT_EMAIL}" projects describe "${GOOGLE_PROJECT_ID}"
+
+            echo "✅ Application default access token:"
+            gcloud auth application-default print-access-token
 
 workflows:
   deploy-workflow:
