@@ -19,7 +19,8 @@ jobs:
             mkdir -p ~/.config/gcloud
             echo "${CIRCLE_OIDC_TOKEN}" > $HOME/.config/gcloud/oidc_access_token
 
-            cat >> $HOME/.config/gcloud/application_default_credentials.json <<- EOF
+            # Use \<< to escape the heredoc in YAML
+            cat \<<EOF > $HOME/.config/gcloud/application_default_credentials.json
             {
               "type": "external_account",
               "audience": "//iam.googleapis.com/${GCP_OIDC_AUDIENCE}",
