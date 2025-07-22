@@ -16,24 +16,40 @@ jobs:
       - checkout
 
       - run:
-          name: Authenticate to Google Cloud via WIF
+          name: Fetch ID token and authenticate to GCP
           command: |
-            gcloud iam workload-identity-pools create-cred-config \
-              "${WORKLOAD_IDENTITY_PROVIDER}" \
-              --service-account="${SERVICE_ACCOUNT_EMAIL}" \
-              --output-file=creds.json
+            # Fetch OIDC token from CircleCI's internal metadata endpoint
+            ID_TOKEN=$(curl -s -f --request GET \
+              --url http://169.254.169.254/computeMetadata/v1/instance/service-accounts/default/identity \
+              -H "Metadata-Flavor: Google" || true)
 
-            gcloud auth login --cred-file=creds.json
-            gcloud auth activate-service-account --key-file=creds.json
+            if [ -z "$ID_TOKEN" ]; then
+              echo "Could not fetch identity token from CircleCI."
+              exit 1
+            fi
+
+            # Login to gcloud using Workload Identity Federation
+            gcloud auth login \
+              --brief \
+              --cred-file=<( \
+                gcloud iam workload-identity-pools create-cred-config \
+                  "$WORKLOAD_IDENTITY_PROVIDER" \
+                  --service-account="$SERVICE_ACCOUNT_EMAIL" \
+                  --output-file=- \
+                  --credential-source-url="http://metadata/identity/oauth2/token" \
+                  --credential-source-headers="Metadata-Flavor: Google" \
+                  --credential-source-type=metadata \
+                  --subject-token-type="urn:ietf:params:oauth:token-type:id_token"
+              )
+
             gcloud config set project $GOOGLE_CLOUD_PROJECT
 
       - run:
           name: Run gcloud command
           command: |
-            echo "Authenticated! Listing compute instances..."
+            echo "Authenticated! Listing GCE instances..."
             gcloud compute instances list
 
-# ✅ ADD THIS WORKFLOW BLOCK
 workflows:
   version: 2
   deploy_on_main:
