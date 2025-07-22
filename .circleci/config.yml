@@ -21,16 +21,16 @@ jobs:
             echo "${CIRCLE_OIDC_TOKEN}" > $HOME/.config/gcloud/oidc_access_token
 
             cat <<EOF > $HOME/.config/gcloud/application_default_credentials.json
-{
-  "type": "external_account",
-  "audience": "//iam.googleapis.com/${GCP_OIDC_AUDIENCE}",
-  "subject_token_type": "urn:ietf:params:oauth:token-type:jwt",
-  "token_url": "https://sts.googleapis.com/v1/token",
-  "credential_source": {
-    "file": "${HOME}/.config/gcloud/oidc_access_token"
-  },
-  "service_account_impersonation_url": "${GCP_IMPERSONATION_URL}"
-}
+            {
+              "type": "external_account",
+              "audience": "//iam.googleapis.com/${GCP_OIDC_AUDIENCE}",
+              "subject_token_type": "urn:ietf:params:oauth:token-type:jwt",
+              "token_url": "https://sts.googleapis.com/v1/token",
+              "credential_source": {
+                "file": "${HOME}/.config/gcloud/oidc_access_token"
+              },
+              "service_account_impersonation_url": "${GCP_IMPERSONATION_URL}"
+            }
 EOF
 
             gcloud auth application-default print-access-token
