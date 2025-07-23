@@ -17,6 +17,18 @@ jobs:
       - checkout
 
       - run:
+          name: Check if OIDC token is injected
+          command: |
+            echo "🔍 Checking CIRCLE_OIDC_TOKEN..."
+            if [ -z "$CIRCLE_OIDC_TOKEN" ]; then
+              echo "❌ OIDC token is NOT available. Check project settings and CircleCI plan."
+              exit 1
+            else
+              echo "✅ OIDC token is available. Value starts with:"
+              echo "${CIRCLE_OIDC_TOKEN:0:20}..."
+            fi
+
+      - run:
           name: GCP OIDC Auth (via Workload Identity Federation)
           command: |
             echo "🔐 Setting up OIDC-based ADC credentials..."
@@ -50,8 +62,9 @@ jobs:
             echo "✅ Getting access token for verification:"
             gcloud auth application-default print-access-token \
               --impersonate-service-account="${GCP_SERVICE_ACCOUNT_EMAIL}"
+
 workflows:
   deploy-workflow:
     jobs:
       - deploy:
-          context: gcp-wif  # CircleCI context must expose CIRCLE_OIDC_TOKEN
+          context: gcp-wif  # CircleCI context must expose CIRCLE_OIDC_TOKEN automatically (no manual variable needed)
