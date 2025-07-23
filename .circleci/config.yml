@@ -35,8 +35,7 @@ jobs:
             echo "${CIRCLE_OIDC_TOKEN}" > /tmp/oidc-token
 
             echo "🔐 Creating ADC config JSON..."
-
-            cat \<<EOF > /tmp/application_default_credentials.json
+            cat <<EOF > /tmp/application_default_credentials.json
             {
               "universe_domain": "googleapis.com",
               "type": "external_account",
@@ -58,14 +57,20 @@ jobs:
             echo "✅ Access token:"
             gcloud auth application-default print-access-token
 
-            echo "✅ Auth list:"
+            echo "✅ Verifying impersonated identity:"
             gcloud auth list
 
-            echo "✅ Project info (verifying impersonation):"
-            gcloud projects describe "${GOOGLE_PROJECT_ID}" 
+            echo "✅ Verifying project access:"
+            gcloud projects describe "${GOOGLE_PROJECT_ID}"
+
+      # Add more deployment or gcloud steps below as needed
+      # - run:
+      #     name: 🚀 Deploy to Cloud Run / GKE / GCS etc.
+      #     command: |
+      #       gcloud run deploy ...
 
 workflows:
   deploy-workflow:
     jobs:
       - deploy:
-          context: gcp-wif  # Must include CIRCLE_OIDC_TOKEN
+          context: gcp-wif  # Make sure this CircleCI context contains `CIRCLE_OIDC_TOKEN`
