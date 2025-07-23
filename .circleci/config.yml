@@ -29,9 +29,9 @@ jobs:
             fi
 
       - run:
-          name: 🔐 Authenticate to GCP via OIDC Workload Identity Federation
+          name: 🔐 GCP OIDC Auth via Workload Identity Federation
           command: |
-            echo "🔐 Setting up OIDC-based ADC credentials..."
+            echo "🔐 Setting up ADC credentials via OIDC..."
 
             export GCP_SERVICE_ACCOUNT_EMAIL="circleci-oidc@${GOOGLE_PROJECT_ID}.iam.gserviceaccount.com"
             export GCP_OIDC_AUDIENCE="projects/${GOOGLE_PROJECT_NUMBER}/locations/global/workloadIdentityPools/${GCP_WORKLOAD_IDENTITY_POOL_ID}/providers/${GCP_OIDC_PROVIDER_ID}"
@@ -40,7 +40,7 @@ jobs:
             mkdir -p $HOME/.config/gcloud
             echo "${CIRCLE_OIDC_TOKEN}" > $HOME/.config/gcloud/oidc_access_token
 
-            cat \<<EOF > $HOME/.config/gcloud/application_default_credentials.json
+            cat <<EOF > $HOME/.config/gcloud/application_default_credentials.json
             {
               "type": "external_account",
               "audience": "//iam.googleapis.com/${GCP_OIDC_AUDIENCE}",
@@ -55,18 +55,16 @@ jobs:
 
             export GOOGLE_APPLICATION_CREDENTIALS="$HOME/.config/gcloud/application_default_credentials.json"
 
-            echo "✅ Configuring gcloud to impersonate service account by default..."
-            gcloud config set auth/impersonate_service_account "${GCP_SERVICE_ACCOUNT_EMAIL}"
-            echo "✅ Setting dummy active account (required for impersonation)..."
-            gcloud config set account "oidc-placeholder@no-reply.com"
-            echo "✅ Verifying GCP access..."
-            gcloud projects describe "${GOOGLE_PROJECT_ID}"
+            echo "✅ Testing gcloud with impersonation directly..."
+            gcloud projects describe "${GOOGLE_PROJECT_ID}" \
+              --impersonate-service-account="${GCP_SERVICE_ACCOUNT_EMAIL}"
 
-            echo "✅ Getting access token from ADC..."
-            gcloud auth application-default print-access-token
+            echo "✅ Access token from ADC:"
+            gcloud auth application-default print-access-token \
+              --impersonate-service-account="${GCP_SERVICE_ACCOUNT_EMAIL}"
 
 workflows:
   deploy-workflow:
     jobs:
       - deploy:
-          context: gcp-wif  # This must expose CIRCLE_OIDC_TOKEN
+          context: gcp-wif
