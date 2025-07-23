@@ -62,8 +62,7 @@ jobs:
             gcloud auth list
 
             echo "✅ Project info (verifying impersonation):"
-            gcloud projects describe "${GOOGLE_PROJECT_ID}" \
-              --account="circleci-deploy-sa@${GOOGLE_PROJECT_ID}.iam.gserviceaccount.com"
+            gcloud projects describe "${GOOGLE_PROJECT_ID}" 
 
 workflows:
   deploy-workflow:
