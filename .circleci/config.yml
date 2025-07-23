@@ -57,11 +57,11 @@ jobs:
             echo "✅ Access token:"
             gcloud auth application-default print-access-token
 
-            echo "✅ Verifying impersonated identity:"
-            gcloud auth list
+            
             echo "✅ Set active impersonated account:"
             gcloud config set account "circleci-deploy-sa@${GOOGLE_PROJECT_ID}.iam.gserviceaccount.com"
-
+            echo "✅ Verifying impersonated identity:"
+            gcloud auth list
 
             echo "✅ Verifying project access:"
             gcloud projects describe "${GOOGLE_PROJECT_ID}"
