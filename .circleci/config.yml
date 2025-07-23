@@ -29,31 +29,31 @@ jobs:
             fi
 
       - run:
-          name: 🔐 GCP OIDC Auth (via Workload Identity Federation)
+          name: 🔐 Setup GCP ADC with WIF + Impersonation
           command: |
-            echo "🔐 Setting up ADC credentials via OIDC..."
+            echo "🔐 Writing OIDC token to /tmp/oidc-token..."
+            echo "${CIRCLE_OIDC_TOKEN}" > /tmp/oidc-token
 
-            export GCP_SERVICE_ACCOUNT_EMAIL="circleci-oidc@${GOOGLE_PROJECT_ID}.iam.gserviceaccount.com"
-            export GCP_OIDC_AUDIENCE="projects/${GOOGLE_PROJECT_NUMBER}/locations/global/workloadIdentityPools/${GCP_WORKLOAD_IDENTITY_POOL_ID}/providers/${GCP_OIDC_PROVIDER_ID}"
-            export GCP_IMPERSONATION_URL="https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${GCP_SERVICE_ACCOUNT_EMAIL}:generateAccessToken"
+            echo "🔐 Creating ADC config JSON..."
 
-            mkdir -p $HOME/.config/gcloud
-            echo "${CIRCLE_OIDC_TOKEN}" > $HOME/.config/gcloud/oidc_access_token
-
-            cat \<<EOF > $HOME/.config/gcloud/application_default_credentials.json
+            cat \<<EOF > /tmp/application_default_credentials.json
             {
+              "universe_domain": "googleapis.com",
               "type": "external_account",
-              "audience": "//iam.googleapis.com/${GCP_OIDC_AUDIENCE}",
+              "audience": "//iam.googleapis.com/projects/57920515119/locations/global/workloadIdentityPools/circleci-oidc/providers/circleci",
               "subject_token_type": "urn:ietf:params:oauth:token-type:jwt",
               "token_url": "https://sts.googleapis.com/v1/token",
+              "service_account_impersonation_url": "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/circleci-deploy-sa@sylvan-hydra-464904-d9.iam.gserviceaccount.com:generateAccessToken",
               "credential_source": {
-                "file": "$HOME/.config/gcloud/oidc_access_token"
-              },
-              "service_account_impersonation_url": "${GCP_IMPERSONATION_URL}"
+                "file": "/tmp/oidc-token",
+                "format": {
+                  "type": "text"
+                }
+              }
             }
             EOF
 
-            export GOOGLE_APPLICATION_CREDENTIALS="$HOME/.config/gcloud/application_default_credentials.json"
+            export GOOGLE_APPLICATION_CREDENTIALS="/tmp/application_default_credentials.json"
 
             echo "✅ Access token:"
             gcloud auth application-default print-access-token
@@ -61,12 +61,12 @@ jobs:
             echo "✅ Auth list:"
             gcloud auth list
 
-            echo "✅ Project describe using impersonation:"
+            echo "✅ Project info (verifying impersonation):"
             gcloud projects describe "${GOOGLE_PROJECT_ID}" \
-              --account="${GCP_SERVICE_ACCOUNT_EMAIL}"
+              --account="circleci-deploy-sa@${GOOGLE_PROJECT_ID}.iam.gserviceaccount.com"
 
 workflows:
   deploy-workflow:
     jobs:
       - deploy:
-          context: gcp-wif  # Make sure this contains CIRCLE_OIDC_TOKEN
+          context: gcp-wif  # Must include CIRCLE_OIDC_TOKEN
