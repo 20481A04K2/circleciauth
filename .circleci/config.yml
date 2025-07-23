@@ -57,7 +57,8 @@ jobs:
 
             echo "✅ Configuring gcloud to impersonate service account by default..."
             gcloud config set auth/impersonate_service_account "${GCP_SERVICE_ACCOUNT_EMAIL}"
-
+            echo "✅ Setting dummy active account (required for impersonation)..."
+            gcloud config set account "oidc-placeholder@no-reply.com"
             echo "✅ Verifying GCP access..."
             gcloud projects describe "${GOOGLE_PROJECT_ID}"
 
