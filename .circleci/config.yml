@@ -3,7 +3,7 @@ version: 2.1
 executors:
   gcp-executor:
     docker:
-      - image: google/cloud-sdk
+      - image: google/cloud-sdk:latest
 
 jobs:
   deploy:
@@ -29,7 +29,7 @@ jobs:
             fi
 
       - run:
-          name: 🔐 GCP OIDC Auth via Workload Identity Federation
+          name: 🔐 GCP OIDC Auth (via Workload Identity Federation)
           command: |
             echo "🔐 Setting up ADC credentials via OIDC..."
 
@@ -55,16 +55,18 @@ jobs:
 
             export GOOGLE_APPLICATION_CREDENTIALS="$HOME/.config/gcloud/application_default_credentials.json"
 
-            echo "✅ Testing gcloud with impersonation directly..."
-            gcloud projects describe "${GOOGLE_PROJECT_ID}" \
-              --impersonate-service-account="${GCP_SERVICE_ACCOUNT_EMAIL}"
+            echo "✅ Access token:"
+            gcloud auth application-default print-access-token
 
-            echo "✅ Access token from ADC:"
-            gcloud auth application-default print-access-token \
-              --impersonate-service-account="${GCP_SERVICE_ACCOUNT_EMAIL}"
+            echo "✅ Auth list:"
+            gcloud auth list
+
+            echo "✅ Project describe using impersonation:"
+            gcloud projects describe "${GOOGLE_PROJECT_ID}" \
+              --account="${GCP_SERVICE_ACCOUNT_EMAIL}"
 
 workflows:
   deploy-workflow:
     jobs:
       - deploy:
-          context: gcp-wif
+          context: gcp-wif  # Make sure this contains CIRCLE_OIDC_TOKEN
