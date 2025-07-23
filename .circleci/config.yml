@@ -61,7 +61,8 @@ jobs:
             gcloud auth list
 
             echo "✅ Verifying project access:"
-            gcloud projects describe "${GOOGLE_PROJECT_ID}"
+            gcloud projects describe "${GOOGLE_PROJECT_ID}"\
+              --impersonate-service-account="circleci-deploy-sa@${GOOGLE_PROJECT_ID}.iam.gserviceaccount.com"
 
       # Add more deployment or gcloud steps below as needed
       # - run:
