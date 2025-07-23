@@ -58,10 +58,13 @@ jobs:
             gcloud auth application-default print-access-token
 
             
-            echo "✅ Set active impersonated account:"
-            gcloud config set account "circleci-deploy-sa@${GOOGLE_PROJECT_ID}.iam.gserviceaccount.com"
-            echo "✅ Verifying impersonated identity:"
-            gcloud auth list
+            echo "✅ Verifying impersonated identity (via ADC):"
+            gcloud auth application-default print-access-token
+
+            echo "✅ Verifying project access (via ADC):"
+            gcloud auth application-default print-access-token > /dev/null && \
+            gcloud projects describe "${GOOGLE_PROJECT_ID}"
+
 
             echo "✅ Verifying project access:"
             gcloud projects describe "${GOOGLE_PROJECT_ID}"
