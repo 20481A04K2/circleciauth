@@ -67,4 +67,4 @@ workflows:
   deploy-workflow:
     jobs:
       - deploy:
-          context: gcp-wif  # CircleCI context must expose CIRCLE_OIDC_TOKEN automatically (no manual variable needed)
+          context: gcp-wif  # This context must expose CIRCLE_OIDC_TOKEN
