@@ -27,7 +27,7 @@ jobs:
             mkdir -p $HOME/.config/gcloud
             echo "${CIRCLE_OIDC_TOKEN}" > $HOME/.config/gcloud/oidc_access_token
 
-            cat \<<EOF > $HOME/.config/gcloud/application_default_credentials.json
+            cat <<EOF > $HOME/.config/gcloud/application_default_credentials.json
             {
               "type": "external_account",
               "audience": "//iam.googleapis.com/${GCP_OIDC_AUDIENCE}",
@@ -42,16 +42,20 @@ jobs:
 
             export GOOGLE_APPLICATION_CREDENTIALS="$HOME/.config/gcloud/application_default_credentials.json"
 
+            echo "🔐 Logging in with ADC + impersonation..."
+            gcloud auth application-default login \
+              --impersonate-service-account="${GCP_SERVICE_ACCOUNT_EMAIL}" \
+              --quiet
+
             echo "✅ Verifying GCP access (via impersonation):"
             gcloud projects describe "${GOOGLE_PROJECT_ID}" \
               --impersonate-service-account="${GCP_SERVICE_ACCOUNT_EMAIL}"
 
             echo "✅ Application default access token:"
-            gcloud auth application-default print-access-token \
-              --impersonate-service-account="${GCP_SERVICE_ACCOUNT_EMAIL}"
+            gcloud auth application-default print-access-token
 
 workflows:
   deploy-workflow:
     jobs:
       - deploy:
-          context: gcp-wif  # This context must expose CIRCLE_OIDC_TOKEN
+          context: gcp-wif  # Make sure this context exposes CIRCLE_OIDC_TOKEN
