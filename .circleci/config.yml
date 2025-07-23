@@ -17,7 +17,7 @@ jobs:
       - checkout
 
       - run:
-          name: Check if OIDC token is injected
+          name: 🔍 Check if OIDC token is injected
           command: |
             echo "🔍 Checking CIRCLE_OIDC_TOKEN..."
             if [ -z "$CIRCLE_OIDC_TOKEN" ]; then
@@ -29,7 +29,7 @@ jobs:
             fi
 
       - run:
-          name: GCP OIDC Auth (via Workload Identity Federation)
+          name: 🔐 GCP OIDC Auth (via Workload Identity Federation)
           command: |
             echo "🔐 Setting up OIDC-based ADC credentials..."
 
@@ -55,6 +55,9 @@ jobs:
 
             export GOOGLE_APPLICATION_CREDENTIALS="$HOME/.config/gcloud/application_default_credentials.json"
 
+            echo "✅ Setting active gcloud account..."
+            gcloud config set account "${GCP_SERVICE_ACCOUNT_EMAIL}"
+
             echo "✅ Verifying GCP access using impersonation..."
             gcloud projects describe "${GOOGLE_PROJECT_ID}" \
               --impersonate-service-account="${GCP_SERVICE_ACCOUNT_EMAIL}"
@@ -67,4 +70,4 @@ workflows:
   deploy-workflow:
     jobs:
       - deploy:
-          context: gcp-wif  # This context must expose CIRCLE_OIDC_TOKEN
+          context: gcp-wif  # Ensure this context contains CIRCLE_OIDC_TOKEN
