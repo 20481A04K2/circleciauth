@@ -35,7 +35,7 @@ jobs:
             echo "${CIRCLE_OIDC_TOKEN}" > /tmp/oidc-token
 
             echo "🔐 Creating ADC config JSON..."
-            cat <<EOF > /tmp/application_default_credentials.json
+            cat \<<EOF > /tmp/application_default_credentials.json
             {
               "universe_domain": "googleapis.com",
               "type": "external_account",
